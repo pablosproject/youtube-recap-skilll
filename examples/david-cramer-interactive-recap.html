@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How To Ship Real Code With AI (Not Junk) — Summary</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent-2: #34d399;
+      --border: rgba(255,255,255,.12);
+      --shadow: rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, rgba(96,165,250,.25), transparent 35%), var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 36px 22px 72px; }
+    header {
+      padding: 34px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(17,24,39,.96), rgba(31,41,55,.82));
+      box-shadow: 0 24px 60px var(--shadow);
+      margin-bottom: 28px;
+    }
+    .eyebrow { color: var(--accent-2); font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; }
+    h1 { margin: 10px 0 14px; font-size: clamp(30px, 5vw, 52px); line-height: 1.05; }
+    .subtitle { color: var(--muted); font-size: 18px; max-width: 880px; }
+    .source { margin-top: 20px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a.time, a.time:hover { text-decoration: none; }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 30px;
+      align-items: start;
+    }
+    .hero-copy { min-width: 0; }
+    .hero-takeaway {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border: 1px solid rgba(52,211,153,.32);
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(6,78,59,.36), rgba(17,24,39,.7));
+    }
+    .hero-takeaway h2 { color: #bbf7d0; margin: 0 0 8px; font-size: 20px; }
+    .hero-takeaway p { margin: 0; }
+    .content { max-width: 980px; margin: 0 auto; min-width: 0; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    .video-slot { min-width: 0; }
+    .video-card {
+      --float-left: 50%;
+      --float-top: 50%;
+      --float-width: 31vw;
+      position: relative;
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(15,23,42,.78);
+      box-shadow: 0 18px 42px rgba(0,0,0,.26);
+    }
+    .video-dragbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: default;
+      user-select: none;
+      touch-action: none;
+      margin-bottom: 10px;
+    }
+    body.video-floating .video-dragbar { cursor: grab; }
+    body.video-floating .video-dragbar:active { cursor: grabbing; }
+    .video-label {
+      color: var(--accent-2);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .video-actions { display: flex; align-items: center; gap: 6px; }
+    body:not(.video-floating) [data-video-size],
+    body:not(.video-floating) [data-video-dock] { display: none; }
+    body.video-floating [data-video-float] { display: none; }
+    .video-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      cursor: pointer;
+      font: 700 12px/1 ui-sans-serif, system-ui, sans-serif;
+      padding: 6px 8px;
+    }
+    .video-btn:hover { background: rgba(96,165,250,.18); border-color: rgba(96,165,250,.42); }
+    .video-frame {
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 14px;
+      background: #020617;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .video-frame iframe { width: 100%; height: 100%; display: block; }
+    .video-help, .now-playing { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+    .now-playing { color: #bfdbfe; min-height: 1.4em; }
+    .resize-handle { display: none; }
+    body.video-floating .video-card {
+      position: fixed;
+      top: var(--float-top);
+      left: var(--float-left);
+      width: var(--float-width);
+      z-index: 1000;
+      background: rgba(15,23,42,.96);
+      border-color: rgba(96,165,250,.35);
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      backdrop-filter: blur(14px);
+    }
+    body.video-floating .video-help { display: none; }
+    body.video-floating .resize-handle {
+      display: block;
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      opacity: .75;
+    }
+    body.video-floating .resize-handle::before {
+      content: "";
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid rgba(191,219,254,.8);
+      border-bottom: 2px solid rgba(191,219,254,.8);
+    }
+    body.video-dragging,
+    body.video-resizing { cursor: grabbing; user-select: none; }
+    body.video-resizing { cursor: nwse-resize; }
+    body.video-dragging iframe,
+    body.video-resizing iframe { pointer-events: none; }
+    li.active {
+      background: rgba(96,165,250,.09);
+      border-radius: 12px;
+      box-shadow: inset 3px 0 0 rgba(96,165,250,.9);
+      padding: 8px 10px;
+      margin-left: -10px;
+    }
+    section {
+      padding: 26px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(17,24,39,.82);
+      box-shadow: 0 14px 34px rgba(0,0,0,.22);
+    }
+    h2 { margin: 0 0 14px; font-size: 24px; }
+    ul { margin: 0; padding-left: 0; list-style: none; }
+    li { margin: 12px 0; padding-left: 0; }
+    .time {
+      cursor: pointer;
+      display: inline-block;
+      color: #bfdbfe;
+      background: rgba(96,165,250,.13);
+      border: 1px solid rgba(96,165,250,.24);
+      border-radius: 999px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      padding: 2px 8px;
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+    strong { color: #f9fafb; }
+    .takeaway {
+      border-color: rgba(52,211,153,.32);
+      background: linear-gradient(135deg, rgba(6,78,59,.42), rgba(17,24,39,.86));
+    }
+    .takeaway h2 { color: #bbf7d0; }
+    footer { color: var(--muted); text-align: center; margin-top: 28px; font-size: 13px; }
+    @media (max-width: 980px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      body.video-floating .video-card {
+        left: 16px;
+        top: auto;
+        bottom: 16px;
+        width: min(420px, calc(100vw - 32px));
+      }
+    }
+    @media print {
+      body { background: #fff; color: #111827; }
+      header, section { box-shadow: none; background: #fff; border-color: #ddd; }
+      .subtitle, footer { color: #4b5563; }
+      a { color: #2563eb; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">YouTube Summary</div>
+          <h1>How To Ship Real Code With AI (Not Junk)</h1>
+          <p class="subtitle">David Cramer, co-founder of Sentry, gives a grounded view of AI-assisted software development: AI is useful, but production-quality software still requires judgment, verification, accountability, and maintenance.</p>
+          <p class="source"><a href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1s">Watch on YouTube</a></p>
+
+          <div class="hero-takeaway">
+            <h2>Main Takeaway</h2>
+            <p>AI can meaningfully improve developer workflows, especially for search, summarization, knowledge retrieval, and prototypes. But Cramer rejects “100x developer” hype: <strong>LLMs often generate bloated or risky code, and verification remains the hard part</strong>.</p>
+          </div>
+        </div>
+
+        <div class="video-slot">
+          <div class="video-card" aria-label="Video player">
+            <div class="video-dragbar" title="Drag to move the player while floating">
+              <div class="video-label">Video</div>
+              <div class="video-actions" aria-label="Floating player controls">
+                <button class="video-btn" type="button" data-video-float aria-label="Float video player">Float</button>
+                <button class="video-btn" type="button" data-video-size="smaller" aria-label="Make video smaller">−</button>
+                <button class="video-btn" type="button" data-video-size="larger" aria-label="Make video larger">+</button>
+                <button class="video-btn" type="button" data-video-dock aria-label="Dock video in header">Dock</button>
+              </div>
+            </div>
+            <div class="video-frame"><div id="player"></div></div>
+            <p class="video-help">Click any timestamp below to seek the video. Use Float to detach the player; Dock puts it back here.</p>
+            <p class="now-playing" id="now-playing"></p>
+            <div class="resize-handle" title="Drag to resize"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <article class="content">
+      <div class="grid">
+      <section>
+        <h2>AI Budgets, ROI, and Practical Use</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=0s" data-seconds="0" target="_blank" rel="noopener">00:00:00</a> Cramer argues that “100x developer” claims mostly come from generating code that may not be valuable or needed.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=120s" data-seconds="120" target="_blank" rel="noopener">00:02:00</a> LLMs should be used efficiently: generate deterministic tools or scripts where possible instead of repeatedly spending tokens.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=240s" data-seconds="240" target="_blank" rel="noopener">00:04:00</a> Sentry treats AI spend like R&amp;D, with a rough budget around <strong>$15k/year per developer</strong>.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=360s" data-seconds="360" target="_blank" rel="noopener">00:06:00</a> Real gains are likely in the <strong>low tens of percent</strong>, not orders of magnitude.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Why “100x Engineers” Are Mostly Hype</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=480s" data-seconds="480" target="_blank" rel="noopener">00:08:00</a> High-volume AI workflows are easier to justify for experiments than for production systems with liability.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=600s" data-seconds="600" target="_blank" rel="noopener">00:10:00</a> Broken software is not acceptable just because it was generated quickly.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=720s" data-seconds="720" target="_blank" rel="noopener">00:12:00</a> Strong LLM use cases include <strong>search, summarization, and internal knowledge retrieval</strong>.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=840s" data-seconds="840" target="_blank" rel="noopener">00:14:00</a> Code generation is harder because software verification remains unsolved.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>MCP and Agent Integrations</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=840s" data-seconds="840" target="_blank" rel="noopener">00:14:00</a> Cramer is bullish on MCP because it lowers integration friction and supports authentication and permissions.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=960s" data-seconds="960" target="_blank" rel="noopener">00:16:00</a> Sentry’s MCP usage is strong despite rough edges like auth bugs and context pollution.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1080s" data-seconds="1080" target="_blank" rel="noopener">00:18:00</a> MCP is valuable because one integration can work across many future clients.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1200s" data-seconds="1200" target="_blank" rel="noopener">00:20:00</a> He is less convinced by parts of the spec such as resources, prompts, and UI apps.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Engineering Craft Has Not Disappeared</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1320s" data-seconds="1320" target="_blank" rel="noopener">00:22:00</a> System design, judgment, and tradeoffs still matter; software engineering is not simply “changed forever.”</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1440s" data-seconds="1440" target="_blank" rel="noopener">00:24:00</a> Online AI discourse is noisy, rage-bait-heavy, and often detached from production reality.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1560s" data-seconds="1560" target="_blank" rel="noopener">00:26:00</a> Tech leaders should not mislead developers with exaggerated claims.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1680s" data-seconds="1680" target="_blank" rel="noopener">00:28:00</a> Beginners may lose important learning-by-struggle experiences if they outsource every problem too early.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Accountability, Code Quality, and Workflow</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1800s" data-seconds="1800" target="_blank" rel="noopener">00:30:00</a> Engineers remain accountable for outages, bugs, and poor design.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=1920s" data-seconds="1920" target="_blank" rel="noopener">00:32:00</a> Writing code is rarely the true bottleneck; design, review, meetings, and maintenance often matter more.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2040s" data-seconds="2040" target="_blank" rel="noopener">00:34:00</a> The industry may have jumped too quickly from autocomplete to “agents write everything.”</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2160s" data-seconds="2160" target="_blank" rel="noopener">00:36:00</a> AI expands who can build small software, but it does not make everyone a professional engineer.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Product, Design, Legal, and Business Roles</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2280s" data-seconds="2280" target="_blank" rel="noopener">00:38:00</a> LLMs help PMs and designers prototype, but roles are not collapsing into one.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2400s" data-seconds="2400" target="_blank" rel="noopener">00:40:00</a> AI is another toolchain shift: the work changes, but professions do not vanish overnight.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2400s" data-seconds="2400" target="_blank" rel="noopener">00:40:00</a> Legal work may use AI assistance, but lawyers must review output because liability matters.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Open Source, Slop PRs, and Licensing</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2520s" data-seconds="2520" target="_blank" rel="noopener">00:42:00</a> AI is increasing low-quality open-source pull requests and accidental submissions.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2640s" data-seconds="2640" target="_blank" rel="noopener">00:44:00</a> A quick v0 is not the same as durable, polished, maintainable software.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2760s" data-seconds="2760" target="_blank" rel="noopener">00:46:00</a> AI does not erase licenses, attribution duties, or IP obligations.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=2880s" data-seconds="2880" target="_blank" rel="noopener">00:48:00</a> Cramer thinks the old collaborative model of open source has weakened.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3000s" data-seconds="3000" target="_blank" rel="noopener">00:50:00</a> He favors <strong>fair source / delayed open source</strong> for complex software that needs monetization and protection.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Models, Training Data, and Tool Convergence</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3240s" data-seconds="3240" target="_blank" rel="noopener">00:54:00</a> If humans stop creating new frameworks and shared knowledge, future models stagnate.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3360s" data-seconds="3360" target="_blank" rel="noopener">00:56:00</a> LLMs can worsen brittle ecosystems by producing glue code and custom patterns that must be maintained.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3480s" data-seconds="3480" target="_blank" rel="noopener">00:58:00</a> Popular technologies like React may become even more dominant because models perform best on heavily represented data.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3600s" data-seconds="3600" target="_blank" rel="noopener">01:00:00</a> Some model behavior problems require better training data, not just prompt engineering.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>AI Economics and the Bubble Question</h2>
+        <ul>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3720s" data-seconds="3720" target="_blank" rel="noopener">01:02:00</a> Cramer expects AI subsidies to shrink; users may need to pay closer to real token costs.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3840s" data-seconds="3840" target="_blank" rel="noopener">01:04:00</a> Training costs are not fully reflected in inference prices.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=3960s" data-seconds="3960" target="_blank" rel="noopener">01:06:00</a> Local models are useful for some cases but do not yet replace frontier models for serious coding work.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=4320s" data-seconds="4320" target="_blank" rel="noopener">01:12:00</a> His strongest opinion: AI is useful and here to stay, but today it still produces lots of <strong>bloated, overengineered, low-quality code</strong>.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=4320s" data-seconds="4320" target="_blank" rel="noopener">01:12:00</a> He calls AI “100% a bubble,” though bubbles do not necessarily pop immediately.</li>
+          <li><a class="time" href="https://www.youtube.com/watch?v=l8yqPwRQXHI&t=4440s" data-seconds="4440" target="_blank" rel="noopener">01:14:00</a> He criticizes startup valuations based on inference spend rather than sustainable revenue.</li>
+        </ul>
+      </section>
+
+      <section class="takeaway">
+        <h2>Conclusion</h2>
+        <p>The message is not “AI replaces developers.” It is: <strong>developers need to learn where AI helps, where it creates risk, and how to keep engineering standards intact while using it</strong>.</p>
+      </section>
+      </div>
+
+      <footer>Generated from the transcript summary of “How To Ship Real Code With AI (Not Junk) ft. David Cramer”.</footer>
+    </article>
+  </main>
+
+  <script>
+    const VIDEO_ID = 'l8yqPwRQXHI';
+    const FLOAT_WIDTH_RATIO = 0.31;
+    const MIN_FLOAT_WIDTH = 280;
+    const EDGE_PADDING = 16;
+    const ACTIVE_SYNC_INTERVAL_MS = 500;
+
+    const els = {
+      body: document.body,
+      card: document.querySelector('.video-card'),
+      dragbar: document.querySelector('.video-dragbar'),
+      resizeHandle: document.querySelector('.resize-handle'),
+      status: document.getElementById('now-playing')
+    };
+
+    const timestamps = [...document.querySelectorAll('a.time[data-seconds]')]
+      .map((link) => ({ link, seconds: Number(link.dataset.seconds) }));
+
+    const state = {
+      player: null,
+      pendingSeek: null,
+      activeLink: null,
+      syncTimer: null,
+      float: { width: null, left: null, top: null, customSize: false }
+    };
+
+    const isFloating = () => els.body.classList.contains('video-floating');
+    const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+    const defaultFloatWidth = () => Math.round(window.innerWidth * FLOAT_WIDTH_RATIO);
+    const maxFloatWidth = () => window.innerWidth - EDGE_PADDING * 2;
+
+    function formatTime(totalSeconds) {
+      const parts = [totalSeconds / 3600, (totalSeconds % 3600) / 60, totalSeconds % 60];
+      return parts.map((part) => Math.floor(part).toString().padStart(2, '0')).join(':');
+    }
+
+    function setStatus(message) {
+      if (els.status.textContent !== message) els.status.textContent = message;
+    }
+
+    function setActiveTimestamp(link, { announce = 'jumped' } = {}) {
+      if (!link) return;
+
+      if (state.activeLink !== link) {
+        state.activeLink?.closest('li')?.classList.remove('active');
+        link.closest('li')?.classList.add('active');
+        state.activeLink = link;
+      }
+
+      if (announce === 'jumped') setStatus(`Jumped to ${link.textContent.trim()}`);
+      if (announce === 'playing') setStatus(`Now playing ${link.textContent.trim()}`);
+    }
+
+    function findActiveTimestamp(seconds) {
+      let active = null;
+      for (const timestamp of timestamps) {
+        if (timestamp.seconds > seconds) break;
+        active = timestamp;
+      }
+      return active?.link || timestamps[0]?.link || null;
+    }
+
+    function syncActiveTimestamp(seconds = state.player?.getCurrentTime?.()) {
+      if (typeof seconds !== 'number' || Number.isNaN(seconds)) return;
+      setActiveTimestamp(findActiveTimestamp(Math.max(0, seconds)), { announce: 'playing' });
+    }
+
+    function stopActiveTimestampSync() {
+      if (state.syncTimer === null) return;
+      window.clearInterval(state.syncTimer);
+      state.syncTimer = null;
+    }
+
+    function startActiveTimestampSync() {
+      stopActiveTimestampSync();
+      state.syncTimer = window.setInterval(() => syncActiveTimestamp(), ACTIVE_SYNC_INTERVAL_MS);
+    }
+
+    function clampFloatState() {
+      const float = state.float;
+      float.width = clamp(float.width || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+      float.left = clamp(float.left ?? 0, EDGE_PADDING, window.innerWidth - float.width - EDGE_PADDING);
+      float.top = clamp(float.top ?? 0, EDGE_PADDING, window.innerHeight - 180);
+    }
+
+    function centerFloatState({ useDefaultSize = false } = {}) {
+      const float = state.float;
+      if (useDefaultSize || !float.customSize) float.width = defaultFloatWidth();
+      float.width = clamp(float.width || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+
+      const estimatedHeight = els.card?.offsetHeight || Math.round(float.width * 9 / 16) + 84;
+      float.left = Math.round((window.innerWidth - float.width) / 2);
+      float.top = Math.round((window.innerHeight - estimatedHeight) / 2);
+      clampFloatState();
+    }
+
+    function applyFloatState() {
+      const float = state.float;
+      if (float.left === null || float.top === null) centerFloatState();
+      else clampFloatState();
+
+      els.card.style.setProperty('--float-left', `${float.left}px`);
+      els.card.style.setProperty('--float-top', `${float.top}px`);
+      els.card.style.setProperty('--float-width', `${float.width}px`);
+    }
+
+    function clearFloatStyles() {
+      ['--float-left', '--float-top', '--float-width'].forEach((name) => els.card.style.removeProperty(name));
+    }
+
+    function setFloating(enabled, { center = false } = {}) {
+      els.body.classList.toggle('video-floating', enabled);
+      if (!enabled) return clearFloatStyles();
+
+      if (center) centerFloatState({ useDefaultSize: !state.float.customSize });
+      applyFloatState();
+    }
+
+    function resizeFloatingVideo(nextWidth) {
+      state.float.customSize = true;
+      state.float.width = clamp(nextWidth || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+      applyFloatState();
+    }
+
+    function seekEmbeddedVideo(seconds, link) {
+      if (state.player?.seekTo) {
+        state.player.seekTo(seconds, true);
+        state.player.playVideo();
+      } else {
+        state.pendingSeek = seconds;
+      }
+      if (link) setActiveTimestamp(link);
+    }
+
+    function trackPointer(event, className, onMove) {
+      event.preventDefault();
+      els.body.classList.add(className);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+
+      function stopTracking() {
+        els.body.classList.remove(className);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', stopTracking);
+      }
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', stopTracking, { once: true });
+    }
+
+    function onYouTubeIframeAPIReady() {
+      state.player = new YT.Player('player', {
+        videoId: VIDEO_ID,
+        playerVars: { start: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady: () => {
+            startActiveTimestampSync();
+
+            if (state.pendingSeek !== null) {
+              state.player.seekTo(state.pendingSeek, true);
+              state.player.playVideo();
+              syncActiveTimestamp(state.pendingSeek);
+              state.pendingSeek = null;
+              return;
+            }
+
+            syncActiveTimestamp();
+          },
+          onStateChange: () => syncActiveTimestamp()
+        }
+      });
+    }
+
+    timestamps.forEach(({ link, seconds }) => {
+      link.title = `Seek video to ${formatTime(seconds)}`;
+    });
+
+    document.addEventListener('click', (event) => {
+      const timestamp = event.target.closest('a.time[data-seconds]');
+      if (timestamp) {
+        event.preventDefault();
+        seekEmbeddedVideo(Number(timestamp.dataset.seconds), timestamp);
+        return;
+      }
+
+      const sizeButton = event.target.closest('[data-video-size]');
+      if (sizeButton) {
+        const factor = sizeButton.dataset.videoSize === 'larger' ? 1.16 : 0.86;
+        resizeFloatingVideo((state.float.width || defaultFloatWidth()) * factor);
+        return;
+      }
+
+      if (event.target.closest('[data-video-float]')) setFloating(true, { center: true });
+      if (event.target.closest('[data-video-dock]')) setFloating(false);
+    });
+
+    els.dragbar?.addEventListener('pointerdown', (event) => {
+      if (!isFloating() || event.target.closest('button')) return;
+
+      const start = {
+        x: event.clientX,
+        y: event.clientY,
+        left: state.float.left,
+        top: state.float.top
+      };
+
+      trackPointer(event, 'video-dragging', (moveEvent) => {
+        state.float.left = start.left + moveEvent.clientX - start.x;
+        state.float.top = start.top + moveEvent.clientY - start.y;
+        applyFloatState();
+      });
+    });
+
+    els.resizeHandle?.addEventListener('pointerdown', (event) => {
+      if (!isFloating()) setFloating(true, { center: true });
+      const startX = event.clientX;
+      const startWidth = state.float.width || defaultFloatWidth();
+
+      trackPointer(event, 'video-resizing', (moveEvent) => {
+        resizeFloatingVideo(startWidth + moveEvent.clientX - startX);
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      if (isFloating()) applyFloatState();
+    });
+
+    window.addEventListener('beforeunload', stopActiveTimestampSync);
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

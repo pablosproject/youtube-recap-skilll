@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!--
+    Interactive YouTube Recap Template
+    ----------------------------------
+    Replace all {{PLACEHOLDERS}} before saving the final artifact.
+
+    Required replacements:
+    - {{VIDEO_ID}}: YouTube video ID only, e.g. l8yqPwRQXHI
+    - {{VIDEO_URL}}: full YouTube URL
+    - {{VIDEO_TITLE}}: page/video title
+    - {{OVERVIEW}}: short 1-2 sentence overview
+    - {{MAIN_TAKEAWAY}}: concise primary takeaway
+    - {{FOOTER_TEXT}}: attribution/footer sentence
+
+    Timestamp links:
+    - Add class="time"
+    - Add data-seconds="SECONDS"
+    - Keep href as a YouTube fallback URL
+    - Link text should be HH:MM:SS
+  -->
+  <title>{{VIDEO_TITLE}} — Interactive Summary</title>
+
+  <style>
+    /* ---------- Design tokens ---------- */
+    :root {
+      --bg: #0f172a;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent-2: #34d399;
+      --border: rgba(255,255,255,.12);
+      --shadow: rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, rgba(96,165,250,.25), transparent 35%), var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow: hidden;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { color: #f9fafb; }
+
+    /* ---------- Page shell ---------- */
+    .wrap {
+      width: 100%;
+      height: 100dvh;
+      margin: 0;
+      padding: 8px;
+    }
+
+    .app-shell {
+      --dock-width: 50vw;
+      height: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(360px, var(--dock-width));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .notes-pane,
+    .video-pane,
+    .video-slot {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .video-slot {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+
+    .notes-pane {
+      overflow-y: auto;
+      padding-right: 0;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .notes-pane::-webkit-scrollbar {
+      display: none;
+    }
+
+    header {
+      padding: 34px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(17,24,39,.96), rgba(31,41,55,.82));
+      box-shadow: 0 24px 60px var(--shadow);
+      margin-bottom: 28px;
+    }
+
+    .hero-copy {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      color: var(--accent-2);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-size: 12px;
+    }
+
+    h1 { margin: 10px 0 14px; font-size: clamp(30px, 5vw, 52px); line-height: 1.05; }
+    h2 { margin: 0 0 14px; font-size: 24px; }
+    .subtitle { color: var(--muted); font-size: 18px; max-width: 880px; }
+    .source { margin-top: 20px; }
+
+    .hero-takeaway {
+      margin-top: 22px;
+      padding: 18px 20px;
+      border: 1px solid rgba(52,211,153,.32);
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(6,78,59,.36), rgba(17,24,39,.7));
+    }
+    .hero-takeaway h2 { color: #bbf7d0; margin: 0 0 8px; font-size: 20px; }
+    .hero-takeaway p { margin: 0; }
+
+    .video-pane {
+      position: relative;
+    }
+
+    .dock-resizer {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -14px;
+      width: 28px;
+      cursor: col-resize;
+      z-index: 5;
+      touch-action: none;
+    }
+
+    .dock-resizer::before {
+      content: "";
+      position: absolute;
+      left: 13px;
+      top: 18px;
+      bottom: 18px;
+      width: 2px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      transition: background .15s ease;
+    }
+
+    .dock-resizer:hover::before {
+      background: rgba(96,165,250,.6);
+    }
+
+    /* ---------- Video player card ---------- */
+    .video-card {
+      /* These CSS variables are updated by JS while floating. */
+      --float-left: 50%;
+      --float-top: 50%;
+      --float-width: 31vw;
+
+      position: relative;
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(15,23,42,.78);
+      box-shadow: 0 18px 42px rgba(0,0,0,.26);
+    }
+
+    /* Drag bar doubles as the player toolbar. It is draggable only in floating mode. */
+    .video-dragbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: default;
+      user-select: none;
+      touch-action: none;
+      margin-bottom: 10px;
+    }
+
+    .video-label {
+      color: var(--accent-2);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .video-actions { display: flex; align-items: center; gap: 6px; }
+
+    /* Docked mode shows Float only. Floating mode shows size controls and Dock. */
+    body:not(.video-floating) [data-video-size],
+    body:not(.video-floating) [data-video-dock] { display: none; }
+    body.video-floating [data-video-float] { display: none; }
+
+    .video-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      cursor: pointer;
+      font: 700 12px/1 ui-sans-serif, system-ui, sans-serif;
+      padding: 6px 8px;
+    }
+    .video-btn:hover { background: rgba(96,165,250,.18); border-color: rgba(96,165,250,.42); }
+
+    .video-frame {
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 14px;
+      background: #020617;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .video-frame iframe { width: 100%; height: 100%; display: block; }
+
+    .video-help, .now-playing { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+    .now-playing { color: #bfdbfe; min-height: 1.4em; }
+
+    /* Floating mode: the video becomes a draggable/resizable overlay. */
+    body.video-floating .video-card {
+      position: fixed;
+      top: var(--float-top);
+      left: var(--float-left);
+      width: var(--float-width);
+      z-index: 1000;
+      background: rgba(15,23,42,.96);
+      border-color: rgba(96,165,250,.35);
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      backdrop-filter: blur(14px);
+    }
+    body.video-floating .video-dragbar { cursor: grab; }
+    body.video-floating .video-dragbar:active { cursor: grabbing; }
+    body.video-floating .video-help { display: none; }
+
+    /* Bottom-right handle for free resizing while floating. */
+    .resize-handle { display: none; }
+    body.video-floating .resize-handle {
+      display: block;
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      width: 18px;
+      height: 18px;
+      cursor: nwse-resize;
+      opacity: .75;
+    }
+    body.video-floating .resize-handle::before {
+      content: "";
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      width: 10px;
+      height: 10px;
+      border-right: 2px solid rgba(191,219,254,.8);
+      border-bottom: 2px solid rgba(191,219,254,.8);
+    }
+
+    /* Disable iframe pointer capture while dragging/resizing the shell. */
+    body.video-dragging,
+    body.video-resizing,
+    body.video-split-resizing { user-select: none; }
+    body.video-dragging { cursor: grabbing; }
+    body.video-resizing { cursor: nwse-resize; }
+    body.video-split-resizing { cursor: col-resize; }
+    body.video-dragging iframe,
+    body.video-resizing iframe,
+    body.video-split-resizing iframe { pointer-events: none; }
+
+    body.video-floating .app-shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.video-floating .dock-resizer {
+      display: none;
+    }
+
+    /* ---------- Summary content ---------- */
+    .content { min-width: 0; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+
+    section {
+      padding: 26px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(17,24,39,.82);
+      box-shadow: 0 14px 34px rgba(0,0,0,.22);
+    }
+
+    ul { margin: 0; padding-left: 0; list-style: none; }
+    li { margin: 12px 0; padding-left: 0; }
+
+    /* Timestamp pills. JS intercepts clicks and seeks the embedded player. */
+    .time {
+      cursor: pointer;
+      display: inline-block;
+      color: #bfdbfe;
+      background: rgba(96,165,250,.13);
+      border: 1px solid rgba(96,165,250,.24);
+      border-radius: 999px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      padding: 2px 8px;
+      margin-right: 8px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    li.active {
+      background: rgba(96,165,250,.09);
+      border-radius: 12px;
+      box-shadow: inset 3px 0 0 rgba(96,165,250,.9);
+      padding: 8px 10px;
+      margin-left: -10px;
+    }
+
+    .takeaway {
+      border-color: rgba(52,211,153,.32);
+      background: linear-gradient(135deg, rgba(6,78,59,.42), rgba(17,24,39,.86));
+    }
+    .takeaway h2 { color: #bbf7d0; }
+
+    footer { color: var(--muted); text-align: center; margin-top: 28px; font-size: 13px; }
+
+    @media (max-width: 980px) {
+      body { overflow: auto; }
+
+      .wrap {
+        height: auto;
+        min-height: 100dvh;
+        padding: 8px;
+      }
+
+      .app-shell {
+        height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .notes-pane {
+        overflow: visible;
+        padding-right: 0;
+      }
+
+      .dock-resizer {
+        display: none;
+      }
+
+      body.video-floating .video-card {
+        left: 16px;
+        top: auto;
+        bottom: 16px;
+        width: min(420px, calc(100vw - 32px));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <div class="app-shell">
+      <article class="notes-pane">
+        <!-- Header: title, overview, and takeaway. -->
+        <header>
+          <div class="hero-copy">
+            <div class="eyebrow">YouTube Summary</div>
+            <h1>{{VIDEO_TITLE}}</h1>
+            <p class="subtitle">{{OVERVIEW}}</p>
+            <p class="source"><a href="{{VIDEO_URL}}">Watch on YouTube</a></p>
+
+            <div class="hero-takeaway">
+              <h2>Main Takeaway</h2>
+              <p>{{MAIN_TAKEAWAY}}</p>
+            </div>
+          </div>
+        </header>
+
+        <!-- Main notes. Duplicate additional section blocks as needed below. -->
+        <article class="content">
+          <div class="grid">
+            <section>
+              <h2>{{SECTION_TITLE}}</h2>
+              <ul>
+                <!-- Timestamp item template. Replace SECONDS, HH:MM:SS, and text. -->
+                <li><a class="time" href="https://www.youtube.com/watch?v={{VIDEO_ID}}&t={{SECONDS}}s" data-seconds="{{SECONDS}}" target="_blank" rel="noopener">{{HH:MM:SS}}</a> {{KEY_POINT}}</li>
+              </ul>
+            </section>
+
+            <section class="takeaway">
+              <h2>Conclusion</h2>
+              <p>{{CONCLUSION}}</p>
+            </section>
+          </div>
+
+          <footer>{{FOOTER_TEXT}}</footer>
+        </article>
+      </article>
+
+      <aside class="video-pane" aria-label="Video panel">
+        <div class="dock-resizer" title="Drag to resize the split"></div>
+        <div class="video-slot">
+          <div class="video-card" aria-label="Video player">
+            <div class="video-dragbar" title="Drag to move the player while floating">
+              <div class="video-label">Video</div>
+              <div class="video-actions" aria-label="Video player controls">
+                <button class="video-btn" type="button" data-video-float aria-label="Float video player">Float</button>
+                <button class="video-btn" type="button" data-video-size="smaller" aria-label="Make video smaller">−</button>
+                <button class="video-btn" type="button" data-video-size="larger" aria-label="Make video larger">+</button>
+                <button class="video-btn" type="button" data-video-dock aria-label="Dock video in header">Dock</button>
+              </div>
+            </div>
+
+            <!-- YouTube IFrame API replaces this div with the embedded player. -->
+            <div class="video-frame"><div id="player"></div></div>
+
+            <p class="video-help">Click any timestamp in the notes to seek the video. Drag the divider to resize the split, or Float to detach the player.</p>
+            <p class="now-playing" id="now-playing"></p>
+            <div class="resize-handle" title="Drag to resize"></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    /*
+      Interactive player behavior
+      ---------------------------
+      - Click a timestamp: seek the embedded YouTube player and highlight that item.
+      - Click Float: detach the player into a centered floating overlay.
+      - Floating mode: drag the top bar to move, drag the corner to resize, Dock to return.
+      - Playback itself does not change layout mode.
+    */
+
+    const VIDEO_ID = '{{VIDEO_ID}}';
+    const FLOAT_WIDTH_RATIO = 0.31;
+    const MIN_FLOAT_WIDTH = 280;
+    const MIN_DOCK_WIDTH = 360;
+    const MIN_NOTES_WIDTH = 420;
+    const EDGE_PADDING = 16;
+    const ACTIVE_SYNC_INTERVAL_MS = 500;
+
+    const els = {
+      body: document.body,
+      shell: document.querySelector('.app-shell'),
+      card: document.querySelector('.video-card'),
+      dragbar: document.querySelector('.video-dragbar'),
+      dockResize: document.querySelector('.dock-resizer'),
+      resizeHandle: document.querySelector('.resize-handle'),
+      status: document.getElementById('now-playing')
+    };
+
+    const timestamps = [...document.querySelectorAll('a.time[data-seconds]')]
+      .map((link) => ({ link, seconds: Number(link.dataset.seconds) }));
+
+    const state = {
+      player: null,
+      pendingSeek: null,
+      activeLink: null,
+      syncTimer: null,
+      dock: { width: null },
+      float: { width: null, left: null, top: null, customSize: false }
+    };
+
+    const isFloating = () => els.body.classList.contains('video-floating');
+    const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+    const defaultFloatWidth = () => Math.round(window.innerWidth * FLOAT_WIDTH_RATIO);
+    const maxFloatWidth = () => window.innerWidth - EDGE_PADDING * 2;
+    const defaultDockWidth = () => Math.round(window.innerWidth * 0.5);
+    const maxDockWidth = () => Math.max(MIN_DOCK_WIDTH, window.innerWidth - MIN_NOTES_WIDTH - EDGE_PADDING * 3);
+
+    function formatTime(totalSeconds) {
+      const parts = [totalSeconds / 3600, (totalSeconds % 3600) / 60, totalSeconds % 60];
+      return parts.map((part) => Math.floor(part).toString().padStart(2, '0')).join(':');
+    }
+
+    function setStatus(message) {
+      if (els.status.textContent !== message) els.status.textContent = message;
+    }
+
+    function setActiveTimestamp(link, { announce = 'jumped' } = {}) {
+      if (!link) return;
+
+      if (state.activeLink !== link) {
+        state.activeLink?.closest('li')?.classList.remove('active');
+        link.closest('li')?.classList.add('active');
+        state.activeLink = link;
+      }
+
+      if (announce === 'jumped') setStatus(`Jumped to ${link.textContent.trim()}`);
+      if (announce === 'playing') setStatus(`Now playing ${link.textContent.trim()}`);
+    }
+
+    function findActiveTimestamp(seconds) {
+      let active = null;
+      for (const timestamp of timestamps) {
+        if (timestamp.seconds <= seconds && (!active || timestamp.seconds >= active.seconds)) {
+          active = timestamp;
+        }
+      }
+      return active?.link || timestamps[0]?.link || null;
+    }
+
+    function syncActiveTimestamp(seconds = state.player?.getCurrentTime?.()) {
+      if (typeof seconds !== 'number' || Number.isNaN(seconds)) return;
+      setActiveTimestamp(findActiveTimestamp(Math.max(0, seconds)), { announce: 'playing' });
+    }
+
+    function stopActiveTimestampSync() {
+      if (state.syncTimer === null) return;
+      window.clearInterval(state.syncTimer);
+      state.syncTimer = null;
+    }
+
+    function startActiveTimestampSync() {
+      stopActiveTimestampSync();
+      state.syncTimer = window.setInterval(() => syncActiveTimestamp(), ACTIVE_SYNC_INTERVAL_MS);
+    }
+
+    function clampFloatState() {
+      const float = state.float;
+      float.width = clamp(float.width || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+      float.left = clamp(float.left ?? 0, EDGE_PADDING, window.innerWidth - float.width - EDGE_PADDING);
+      float.top = clamp(float.top ?? 0, EDGE_PADDING, window.innerHeight - 180);
+    }
+
+    function centerFloatState({ useDefaultSize = false } = {}) {
+      const float = state.float;
+      if (useDefaultSize || !float.customSize) float.width = defaultFloatWidth();
+      float.width = clamp(float.width || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+
+      const estimatedHeight = els.card?.offsetHeight || Math.round(float.width * 9 / 16) + 84;
+      float.left = Math.round((window.innerWidth - float.width) / 2);
+      float.top = Math.round((window.innerHeight - estimatedHeight) / 2);
+      clampFloatState();
+    }
+
+    function applyFloatState() {
+      const float = state.float;
+      if (float.left === null || float.top === null) centerFloatState();
+      else clampFloatState();
+
+      els.card.style.setProperty('--float-left', `${float.left}px`);
+      els.card.style.setProperty('--float-top', `${float.top}px`);
+      els.card.style.setProperty('--float-width', `${float.width}px`);
+    }
+
+    function clearFloatStyles() {
+      ['--float-left', '--float-top', '--float-width'].forEach((name) => els.card.style.removeProperty(name));
+    }
+
+    function applyDockWidth() {
+      if (!els.shell) return;
+      state.dock.width = clamp(state.dock.width || defaultDockWidth(), MIN_DOCK_WIDTH, maxDockWidth());
+      els.shell.style.setProperty('--dock-width', `${state.dock.width}px`);
+    }
+
+    function setFloating(enabled, { center = false } = {}) {
+      els.body.classList.toggle('video-floating', enabled);
+      if (!enabled) {
+        clearFloatStyles();
+        applyDockWidth();
+        return;
+      }
+
+      if (center) centerFloatState({ useDefaultSize: !state.float.customSize });
+      applyFloatState();
+    }
+
+    function resizeFloatingVideo(nextWidth) {
+      state.float.customSize = true;
+      state.float.width = clamp(nextWidth || defaultFloatWidth(), MIN_FLOAT_WIDTH, maxFloatWidth());
+      applyFloatState();
+    }
+
+    function seekEmbeddedVideo(seconds, link) {
+      if (state.player?.seekTo) {
+        state.player.seekTo(seconds, true);
+        state.player.playVideo();
+      } else {
+        state.pendingSeek = seconds;
+      }
+      if (link) setActiveTimestamp(link);
+    }
+
+    function trackPointer(event, className, onMove) {
+      event.preventDefault();
+      els.body.classList.add(className);
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+
+      function stopTracking() {
+        els.body.classList.remove(className);
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', stopTracking);
+      }
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', stopTracking, { once: true });
+    }
+
+    /* Called by the YouTube IFrame API after it loads. Must remain global. */
+    function onYouTubeIframeAPIReady() {
+      state.player = new YT.Player('player', {
+        videoId: VIDEO_ID,
+        playerVars: { start: 1, rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady: () => {
+            startActiveTimestampSync();
+
+            if (state.pendingSeek !== null) {
+              state.player.seekTo(state.pendingSeek, true);
+              state.player.playVideo();
+              syncActiveTimestamp(state.pendingSeek);
+              state.pendingSeek = null;
+              return;
+            }
+
+            syncActiveTimestamp();
+          },
+          onStateChange: () => syncActiveTimestamp()
+        }
+      });
+    }
+
+    timestamps.forEach(({ link, seconds }) => {
+      link.title = `Seek video to ${formatTime(seconds)}`;
+    });
+
+    /* One delegated click handler keeps timestamp/player controls simple. */
+    document.addEventListener('click', (event) => {
+      const timestamp = event.target.closest('a.time[data-seconds]');
+      if (timestamp) {
+        event.preventDefault();
+        seekEmbeddedVideo(Number(timestamp.dataset.seconds), timestamp);
+        return;
+      }
+
+      const sizeButton = event.target.closest('[data-video-size]');
+      if (sizeButton) {
+        const factor = sizeButton.dataset.videoSize === 'larger' ? 1.16 : 0.86;
+        resizeFloatingVideo((state.float.width || defaultFloatWidth()) * factor);
+        return;
+      }
+
+      if (event.target.closest('[data-video-float]')) setFloating(true, { center: true });
+      if (event.target.closest('[data-video-dock]')) setFloating(false);
+    });
+
+    els.dragbar?.addEventListener('pointerdown', (event) => {
+      if (!isFloating() || event.target.closest('button')) return;
+
+      const start = {
+        x: event.clientX,
+        y: event.clientY,
+        left: state.float.left,
+        top: state.float.top
+      };
+
+      trackPointer(event, 'video-dragging', (moveEvent) => {
+        state.float.left = start.left + moveEvent.clientX - start.x;
+        state.float.top = start.top + moveEvent.clientY - start.y;
+        applyFloatState();
+      });
+    });
+
+    els.dockResize?.addEventListener('pointerdown', (event) => {
+      if (isFloating()) return;
+      const startX = event.clientX;
+      const startWidth = state.dock.width || defaultDockWidth();
+
+      trackPointer(event, 'video-split-resizing', (moveEvent) => {
+        state.dock.width = startWidth - (moveEvent.clientX - startX);
+        applyDockWidth();
+      });
+    });
+
+    els.resizeHandle?.addEventListener('pointerdown', (event) => {
+      if (!isFloating()) setFloating(true, { center: true });
+      const startX = event.clientX;
+      const startWidth = state.float.width || defaultFloatWidth();
+
+      trackPointer(event, 'video-resizing', (moveEvent) => {
+        resizeFloatingVideo(startWidth + moveEvent.clientX - startX);
+      });
+    });
+
+    applyDockWidth();
+
+    window.addEventListener('resize', () => {
+      if (isFloating()) applyFloatState();
+      else applyDockWidth();
+    });
+
+    window.addEventListener('beforeunload', stopActiveTimestampSync);
+  </script>
+
+  <!-- YouTube IFrame API. Keep this after the inline script. -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

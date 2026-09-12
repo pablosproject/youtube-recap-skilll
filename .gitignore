@@ -1,0 +1,8 @@
+.DS_Store
+*.tmp
+*.log
+node_modules/
+
+# Generated local recap outputs may be created during testing.
+/generated/
+/tmp/
