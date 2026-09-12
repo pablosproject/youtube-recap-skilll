@@ -1,8 +1,14 @@
 # YouTube Recap Skill
 
-A portable Agent Skill for turning a YouTube video into an interactive hosted HTML recap.
+Turn long YouTube videos into polished, interactive recaps your agent can publish and share.
 
-The skill downloads a transcript with `yt-dlp`, summarizes the video, generates a navigable HTML artifact with timestamp links and an embedded player, then publishes the artifact to a hosted URL, preferably as a secret GitHub Gist rendered through a raw-content proxy.
+This portable Agent Skill downloads a transcript with `yt-dlp`, identifies the strongest takeaways, and generates a hosted HTML recap with timestamped notes, clickable navigation, and a dockable/floating embedded player.
+
+## Examples
+
+- [Pi Building Pi, Openclaw's Minimalist Coding Agent](https://gist.githack.com/pablosproject/bf6a5d02237011e5f935f69218013386/raw/db8eb6ff831553d976b685589eb72073ad42aa11/pi-building-pi-interactive-recap.html)
+- [State of Agentic Coding #8](https://gist.githack.com/pablosproject/5a9fa0affd4e5ac71c4465864e749254/raw/861171d106c83a6aa9447be4ce6fd7c0feba4473/state-of-agentic-coding-8-interactive-recap.html)
+- [How To Ship Real Code With AI (Not Junk)](https://gist.githack.com/pablosproject/73fba668d3e458e8a4c8ecb6f74d5793/raw/8718633930ab7cf82757fbbd077ee27fb91610d3/youtube-summary-david-cramer-ai-code.html)
 
 ## What it creates
 
@@ -17,7 +23,7 @@ Each recap includes:
 - a dockable/floating video player
 - a hosted URL for sharing or opening in a browser
 
-See [`examples/david-cramer-interactive-recap.html`](examples/david-cramer-interactive-recap.html) for an example artifact.
+A local example artifact is also included at [`examples/david-cramer-interactive-recap.html`](examples/david-cramer-interactive-recap.html).
 
 ## Requirements
 
@@ -42,7 +48,7 @@ pipx install yt-dlp
 Clone this repository:
 
 ```bash
-git clone https://github.com/<your-user>/youtube-recap.git
+git clone https://github.com/pablosproject/youtube-recap-skilll.git
 ```
 
 Then copy the repository folder into your harness's skill directory.
@@ -84,7 +90,7 @@ cp -R youtube-recap .pi/skills/youtube-recap
 If your Codex setup includes the skill installer, install from the GitHub skill directory URL:
 
 ```bash
-skill-installer install https://github.com/<your-user>/youtube-recap
+skill-installer install https://github.com/pablosproject/youtube-recap-skilll
 ```
 
 Alternatively, copy the skill directory into the Codex skills directory used by your setup, for example:
