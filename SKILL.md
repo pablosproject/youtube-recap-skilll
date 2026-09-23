@@ -3,7 +3,7 @@ name: youtube-recap
 description: Create a summary of a YouTube video in the form of an interactive HTML recap artifact, with a header summary, key highlights, timestamped navigation, and an embedded dockable/floating player.
 license: MIT
 compatibility: Requires an agent harness with Agent Skills support, yt-dlp for transcript acquisition, and GitHub authentication for Gist publishing.
-allowed-tools: Bash(yt-dlp *)
+allowed-tools: Bash(yt-dlp *), Bash(node *), Bash(npm *), Bash(gh *), Bash(git *), Bash(./scripts/recap-pipeline.sh *), Bash(scripts/recap-pipeline.sh *)
 ---
 
 ## Purpose
@@ -24,15 +24,19 @@ The primary deliverable is the HTML artifact **plus a published, hosted URL for 
 ## Steps
 
 1. Download the transcript with `yt-dlp` (see [Transcript Acquisition](#transcript-acquisition)).
-2. Read the downloaded transcript and write a temporary planning summary.
-3. Generate the HTML artifact from the planning summary and the template.
-4. **Publish the HTML and return a working hosted URL as the final mandatory step** (see [Publishing to GitHub Gist](#publishing-to-github-gist)).
+2. Read the downloaded transcript and extract deterministic recap data.
+3. Save that extracted data as `video-recap-data.json` conforming to `schemas/video-recap.schema.json`.
+4. Render the HTML artifact from the JSON data with the Eta template.
+5. **Publish the HTML and return a working hosted URL as the final mandatory step** (see [Publishing to GitHub Gist](#publishing-to-github-gist)).
 
 ## References
 
 Use these skill-local files when creating the artifact:
 
-- Template: `templates/interactive-youtube-recap.html`
+- Pipeline: `scripts/recap-pipeline.sh`
+- Data schema: `schemas/video-recap.schema.json`
+- Eta template: `templates/recap.eta`
+- Legacy placeholder template: `templates/interactive-youtube-recap.html`
 - Example: `examples/david-cramer-interactive-recap.html`
 
 References are relative to this skill directory.
@@ -89,45 +93,56 @@ Produce these content elements:
 5. **Conclusion**
    - A brief final synthesis of the video's main message, implication, or call to action.
 
-## Recommended Intermediate Structure
+## Deterministic Recap Data
 
-Before writing the HTML, structure the extracted content like this:
+Before writing the HTML, save the extracted content to `video-recap-data.json` and make that JSON the single source of truth for rendering.
 
-```markdown
-# Video Recap Data
+Validate the shape against `schemas/video-recap.schema.json`. The required top-level fields are:
 
-## Header Summary
-A concise 1–2 sentence summary explaining what the video is about and why it matters.
+- `schemaVersion`
+- `video` (`id`, `url`, `title`, optional `channel`, optional `duration`)
+- `abstract`
+- `mainTakeaway`
+- `highlights`
+- `sections`
+- `conclusion`
 
-## Main Takeaway
-The single strongest idea or conclusion from the video.
+Every timestamped highlight or section point must include:
 
-## Key Highlights
-- [HH:MM:SS] Highlight title — short explanation
-- [HH:MM:SS] Highlight title — short explanation
+- `time` in `HH:MM:SS`
+- `seconds` as the total converted seconds
+- `title`
+- `description`
 
-## Sections / Timeframes
-### Section title
-- [HH:MM:SS] Key point
-- [HH:MM:SS] Key point
+The HTML artifact is generated from this JSON data, not from an ad hoc prose plan.
 
-### Section title
-- [HH:MM:SS] Key point
-- [HH:MM:SS] Key point
+## Pipeline
 
-## Conclusion
-Brief final synthesis of the video's message.
+Run the deterministic pipeline from the per-video output directory. Use the skill-local script by absolute path, for example:
+
+```bash
+/path/to/youtube-recap/scripts/recap-pipeline.sh fetch "VIDEO_URL"
+/path/to/youtube-recap/scripts/recap-pipeline.sh validate
+/path/to/youtube-recap/scripts/recap-pipeline.sh render
+/path/to/youtube-recap/scripts/recap-pipeline.sh publish
 ```
 
-This structure is an internal planning aid. The final user-facing deliverable should be the HTML artifact.
+The `render` step validates `video-recap-data.json`, checks timestamp-to-seconds consistency, and renders `templates/recap.eta` with Eta. It is idempotent: unchanged JSON plus unchanged template produces unchanged HTML.
+
+Install dependencies once in the skill directory if they are missing:
+
+```bash
+npm install
+```
 
 ## Artifact Generation
 
 When generating the HTML artifact:
 
-1. Read `templates/interactive-youtube-recap.html`.
-2. Replace all placeholders with the extracted video recap data.
-3. Generate timestamp list items using this pattern:
+1. Read `video-recap-data.json`.
+2. Validate it with `schemas/video-recap.schema.json`.
+3. Render `templates/recap.eta` with Eta.
+4. Generate timestamp list items using this pattern:
 
 ```html
 <li>
@@ -140,14 +155,14 @@ When generating the HTML artifact:
 </li>
 ```
 
-4. Keep the YouTube URL in `href` as a fallback.
-5. Set `data-seconds` to the timestamp converted to total seconds.
-6. Save the artifact as a descriptive `.html` file.
-7. **Always publish the artifact after generating it.** Do this even if the user did not explicitly ask to open, share, or host it.
-8. Publish the artifact as a **secret GitHub Gist** by default and build a rendered URL using `gist.githack.com` (or an equivalent raw proxy URL) so the HTML is served with the correct content type.
-9. **Do not consider the task complete until you have a working hosted URL to report back.** Do not end with only a local file path unless every hosting attempt fails.
-10. Do not use `file://` for YouTube recap artifacts, because the embedded player may not load there.
-11. If GitHub publishing is unavailable or fails, fall back to a local `localhost` server and report that URL instead.
+5. Keep the YouTube URL in `href` as a fallback.
+6. Set `data-seconds` to the timestamp converted to total seconds from the JSON.
+7. Save the artifact as a descriptive `.html` file.
+8. **Always publish the artifact after generating it.** Do this even if the user did not explicitly ask to open, share, or host it.
+9. Publish the artifact as a **secret GitHub Gist** by default and build a rendered URL using `htmlpreview.github.io` with a SHA-pinned raw Gist URL.
+10. **Do not consider the task complete until you have a working hosted URL to report back.** Do not end with only a local file path unless every hosting attempt fails.
+11. Do not use `file://` for YouTube recap artifacts, because the embedded player may not load there.
+12. If GitHub publishing is unavailable or fails, fall back to a local `localhost` server and report that URL instead.
 
 ## Artifact Behavior Requirements
 
@@ -170,6 +185,7 @@ The generated artifact must preserve these behaviors from the template:
   - `Dock` returns the player to the header
 - Clicking a timestamp seeks the embedded YouTube player to that exact time.
 - Clicking a timestamp highlights the selected item immediately.
+- The YouTube IFrame API must be loaded from inline JavaScript with `document.createElement('script')`; do not use a plain external `<script src="https://www.youtube.com/iframe_api">` tag because htmlpreview.github.io disables non-GitHub external scripts.
 - As playback continues, the currently playing timestamp/section should sync with the highlighted entry in the notes list.
 - Only one timestamp item should be highlighted at a time.
 - Timestamp clicks respect the current player mode:
@@ -195,14 +211,14 @@ Publishing is **mandatory for every run of this skill**. Do not wait for the use
 
 1. Create a **secret** gist containing a single `.html` file with the final recap HTML.
 2. Capture the gist response fields needed to build the rendered URL, especially the gist id, filename, and latest revision/version.
-3. Build the browser URL using the gist raw proxy format, e.g. `https://gist.githack.com/<github-username>/<gist-id>/raw/<revision>/<filename>.html`.
+3. Build the browser URL using a SHA-pinned raw Gist URL through HTMLPreview, e.g. `https://htmlpreview.github.io/?https://gist.githubusercontent.com/<github-username>/<gist-id>/raw/<revision>/<filename>.html`.
 4. Verify you have a usable hosted URL and return it to the user. If browser-opening is available, open that rendered URL as well.
 5. **Never end the task after only saving the HTML locally if publishing succeeded.** The hosted URL must be included in the final answer.
 6. If the user asks to remove/delete the published recap, delete the gist using GitHub's API or `gh gist delete`, then confirm removal.
 7. If GitHub publishing is unavailable or fails, fall back to a local `localhost` server and return that URL.
 8. Only if both Gist publishing and localhost hosting fail may you fall back to returning just the local file path, and in that case you must explicitly say hosting failed.
 
-Note: the raw GitHub Gist URL by itself is not enough for this use case because the browser may treat it as plain text; the proxy URL is what makes the HTML render.
+Note: the raw GitHub Gist URL by itself is not enough for this use case because the browser may treat it as plain text; the proxy URL is what makes the HTML render. HTMLPreview rewrites external scripts, so keep the YouTube API loader inside the inline script as described in the template.
 
 ## Final Response to User
 

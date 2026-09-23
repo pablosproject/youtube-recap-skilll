@@ -2,7 +2,7 @@
 
 Turn long YouTube videos into polished, interactive recaps your agent can publish and share.
 
-This portable Agent Skill downloads a transcript with `yt-dlp`, identifies the strongest takeaways, and generates a hosted HTML recap with timestamped notes, clickable navigation, and a dockable/floating embedded player.
+This portable Agent Skill downloads a transcript with `yt-dlp`, captures the recap as validated JSON, and deterministically renders a hosted HTML recap with Eta, timestamped notes, clickable navigation, and a dockable/floating embedded player.
 
 ## Examples
 
@@ -29,6 +29,7 @@ A local example artifact is also included at [`examples/david-cramer-interactive
 
 - An agent harness that supports Agent Skills / `SKILL.md` directories
 - [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) available on `PATH`
+- Node.js and npm for the deterministic Eta renderer
 - GitHub CLI authentication or a GitHub token if you want automatic Gist publishing
 
 Install `yt-dlp` with Homebrew:
@@ -49,6 +50,13 @@ Clone this repository:
 
 ```bash
 git clone https://github.com/pablosproject/youtube-recap-skilll.git
+```
+
+Install the renderer dependencies:
+
+```bash
+cd youtube-recap
+npm install
 ```
 
 Then copy the repository folder into your harness's skill directory.
@@ -116,6 +124,17 @@ Or, in harnesses that expose skills as slash commands:
 /skill:youtube-recap https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
+The skill writes `video-recap-data.json`, validates it with `schemas/video-recap.schema.json`, renders the Eta template, and publishes the HTML.
+
+The underlying deterministic pipeline runs from a per-video output directory:
+
+```bash
+/path/to/youtube-recap/scripts/recap-pipeline.sh fetch "https://www.youtube.com/watch?v=VIDEO_ID"
+/path/to/youtube-recap/scripts/recap-pipeline.sh validate
+/path/to/youtube-recap/scripts/recap-pipeline.sh render
+/path/to/youtube-recap/scripts/recap-pipeline.sh publish
+```
+
 The final response should include:
 
 - the generated local `.html` path
@@ -128,6 +147,11 @@ The final response should include:
 SKILL.md
 README.md
 LICENSE
+package.json
+package-lock.json
+schemas/video-recap.schema.json
+scripts/recap-pipeline.sh
+templates/recap.eta
 templates/interactive-youtube-recap.html
 examples/david-cramer-interactive-recap.html
 examples/transcripts/why-im-moving-to-linux.en.srt
@@ -135,7 +159,7 @@ examples/transcripts/why-im-moving-to-linux.en.srt
 
 ## Publishing behavior
 
-The skill is designed to publish the generated recap after creating it. By default it attempts to create a secret GitHub Gist and return a rendered URL using a raw-content proxy. If GitHub publishing is unavailable, the skill falls back to a local hosted URL.
+The skill is designed to publish the generated recap after creating it. By default it attempts to create a secret GitHub Gist and return a rendered HTMLPreview URL that points to a SHA-pinned raw Gist revision. If GitHub publishing is unavailable, the skill falls back to a local hosted URL.
 
 ## License
 

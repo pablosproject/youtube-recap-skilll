@@ -10,12 +10,12 @@
     Replace all {{PLACEHOLDERS}} before saving the final artifact.
 
     Required replacements:
-    - {{VIDEO_ID}}: YouTube video ID only, e.g. l8yqPwRQXHI
-    - {{VIDEO_URL}}: full YouTube URL
-    - {{VIDEO_TITLE}}: page/video title
-    - {{OVERVIEW}}: short 1-2 sentence overview
-    - {{MAIN_TAKEAWAY}}: concise primary takeaway
-    - {{FOOTER_TEXT}}: attribution/footer sentence
+    - <%= it.video.id %>: YouTube video ID only, e.g. l8yqPwRQXHI
+    - <%= it.video.url %>: full YouTube URL
+    - <%= it.video.title %>: page/video title
+    - <%= it.abstract %>: short 1-2 sentence overview
+    - <%= it.mainTakeaway %>: concise primary takeaway
+    - <%= it.footerText %>: attribution/footer sentence
 
     Timestamp links:
     - Add class="time"
@@ -23,7 +23,7 @@
     - Keep href as a YouTube fallback URL
     - Link text should be HH:MM:SS
   -->
-  <title>{{VIDEO_TITLE}} — Interactive Summary</title>
+  <title><%= it.video.title %> — Interactive Summary</title>
 
   <style>
     /* ---------- Design tokens ---------- */
@@ -376,13 +376,13 @@
         <header>
           <div class="hero-copy">
             <div class="eyebrow">YouTube Summary</div>
-            <h1>{{VIDEO_TITLE}}</h1>
-            <p class="subtitle">{{OVERVIEW}}</p>
-            <p class="source"><a href="{{VIDEO_URL}}">Watch on YouTube</a></p>
+            <h1><%= it.video.title %></h1>
+            <p class="subtitle"><%= it.abstract %></p>
+            <p class="source"><a href="<%= it.video.url %>">Watch on YouTube</a></p>
 
             <div class="hero-takeaway">
               <h2>Main Takeaway</h2>
-              <p>{{MAIN_TAKEAWAY}}</p>
+              <p><%= it.mainTakeaway %></p>
             </div>
           </div>
         </header>
@@ -390,21 +390,24 @@
         <!-- Main notes. Duplicate additional section blocks as needed below. -->
         <article class="content">
           <div class="grid">
+<% for (const section of it.renderSections) { %>
             <section>
-              <h2>{{SECTION_TITLE}}</h2>
+              <h2><%= section.title %></h2>
               <ul>
-                <!-- Timestamp item template. Replace SECONDS, HH:MM:SS, and text. -->
-                <li><a class="time" href="https://www.youtube.com/watch?v={{VIDEO_ID}}&t={{SECONDS}}s" data-seconds="{{SECONDS}}" target="_blank" rel="noopener">{{HH:MM:SS}}</a> {{KEY_POINT}}</li>
+<% for (const point of section.points) { %>
+                <li><a class="time" href="https://www.youtube.com/watch?v=<%= it.video.id %>&t=<%= point.seconds %>s" data-seconds="<%= point.seconds %>" target="_blank" rel="noopener"><%= point.time %></a> <strong><%= point.title %></strong> — <%= point.description %></li>
+<% } %>
               </ul>
             </section>
+<% } %>
 
             <section class="takeaway">
               <h2>Conclusion</h2>
-              <p>{{CONCLUSION}}</p>
+              <p><%= it.conclusion %></p>
             </section>
           </div>
 
-          <footer>{{FOOTER_TEXT}}</footer>
+          <footer><%= it.footerText %></footer>
         </article>
       </article>
 
@@ -444,7 +447,7 @@
       - Playback itself does not change layout mode.
     */
 
-    const VIDEO_ID = '{{VIDEO_ID}}';
+    const VIDEO_ID = <%~ it.videoIdJson %>;
     const FLOAT_WIDTH_RATIO = 0.31;
     const MIN_FLOAT_WIDTH = 280;
     const MIN_DOCK_WIDTH = 360;

@@ -1,0 +1,12 @@
+{
+  "name": "youtube-recap-skill",
+  "version": "0.2.0",
+  "description": "Agent skill for deterministic YouTube recap artifacts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "eta": "^4.6.0"
+  }
+}
