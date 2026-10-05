@@ -1,5 +1,8 @@
 # YouTube Recap Skill
 
+> [!IMPORTANT]
+> **This repository is archived.** The skill has moved into a private repository, where it now produces recap preview links for the video recap web app instead of Gist-hosted HTML pages. The code here is the last public version and is no longer maintained.
+
 Turn long YouTube videos into polished, interactive recaps your agent can publish and share.
 
 This portable Agent Skill downloads a transcript with `yt-dlp`, captures the recap as validated JSON, and deterministically renders a hosted HTML recap with Eta, timestamped notes, clickable navigation, and a dockable/floating embedded player.
